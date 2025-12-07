@@ -115,6 +115,7 @@ class QueryController {
                         transactionId: true,
                         date: true,
                         customerId: true,
+                        productId: true,
                         quantity: true,
                         totalAmount: true,
                         employeeName: true,

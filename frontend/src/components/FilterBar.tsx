@@ -6,9 +6,15 @@ import {
 } from "@/components/ui/native-select"
 import { IoReload } from "react-icons/io5";
 import { CiCircleInfo } from "react-icons/ci";
+import { FilterInterface } from '@/app/page';
 
 
-const FilterBar = () => {
+interface FilterBarProps {
+  filters: FilterInterface;
+  setFilters: React.Dispatch<React.SetStateAction<FilterInterface>>;
+}
+
+const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
     return (
         <div className='w-full flex flex-col gap-3 px-3'>
             <div className='py-4 flex justify-between items-center'>

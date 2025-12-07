@@ -1,5 +1,3 @@
-import { Gender, CustomerRegion } from "src/generated/prisma";
-
 export interface TransactionResponse {
   transactionId: string;
   date: string;
@@ -11,9 +9,9 @@ export interface TransactionResponse {
   customer: {
     customerName: string;
     phoneNumber: string;
-    gender: Gender;
+    gender: string;
     age: number;
-    customerRegion: CustomerRegion;
+    customerRegion: string;
   };
   product: {
     productCategory: string;
@@ -29,8 +27,6 @@ export interface PaginationResponse {
   hasPrev: boolean;
   filters: Record<string, string | string[] | undefined>;
 }
-
-
 
 export interface SortResponse {
   orderBy: 'customerName' | 'totalAmount' | 'date' | 'quantity';

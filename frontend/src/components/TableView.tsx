@@ -1,142 +1,36 @@
+'use client'
 import React from 'react'
+import axios from 'axios'
+import useSWR from 'swr'
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-  TableFooter
+  TableRow
 } from "@/components/ui/table"
 import CopyButton from './TableView/CopyButton'
+import { FilterInterface } from '@/app/page'
+import { buildQueryString } from '@/utils/buildQueryString'
+import type { TransactionsApiResponse, TransactionResponse } from '@/utils/types/queryResponse'
 
+interface TableViewProps {
+  filters: FilterInterface;
+}
 
-const transactions = [
-  {
-    transactionId: 1234567,
-    date: "2025-12-01",
-    customerId: "CUST12016",
-    customerName: "Neha Yadav",
-    phoneNumber: "+91 9123456789",
-    gender: "Female",
-    age: 25,
-    productCategory: "Clothing",
-    quantity: 1,
-    totalAmount: 1000,
-    customerRegion: "South",
-    productId: "PROD0001",
-    employeeName: "Harsh Agarwal",
-  },
-  {
-    transactionId: 1234568,
-    date: "2025-12-02",
-    customerId: "CUST12017",
-    customerName: "Rahul Sharma",
-    phoneNumber: "+91 9876543210",
-    gender: "Male",
-    age: 32,
-    productCategory: "Electronics",
-    quantity: 2,
-    totalAmount: 25000,
-    customerRegion: "North",
-    productId: "PROD0002",
-    employeeName: "Priya Singh",
-  },
-  {
-    transactionId: 1234569,
-    date: "2025-12-03",
-    customerId: "CUST12018",
-    customerName: "Aisha Khan",
-    phoneNumber: "+91 8765432109",
-    gender: "Female",
-    age: 28,
-    productCategory: "Books",
-    quantity: 3,
-    totalAmount: 750,
-    customerRegion: "West",
-    productId: "PROD0003",
-    employeeName: "Vikram Desai",
-  },
-  {
-    transactionId: 1234570,
-    date: "2025-12-04",
-    customerId: "CUST12019",
-    customerName: "Arjun Patel",
-    phoneNumber: "+91 7654321098",
-    gender: "Male",
-    age: 41,
-    productCategory: "Home & Garden",
-    quantity: 1,
-    totalAmount: 3500,
-    customerRegion: "East",
-    productId: "PROD0004",
-    employeeName: "Sneha Roy",
-  },
-  {
-    transactionId: 1234571,
-    date: "2025-12-05",
-    customerId: "CUST12020",
-    customerName: "Meera Joshi",
-    phoneNumber: "+91 6543210987",
-    gender: "Female",
-    age: 19,
-    productCategory: "Sports",
-    quantity: 4,
-    totalAmount: 8000,
-    customerRegion: "South",
-    productId: "PROD0005",
-    employeeName: "Rohan Gupta",
-  },
-  {
-    transactionId: 1234572,
-    date: "2025-12-06",
-    customerId: "CUST12021",
-    customerName: "Karan Malhotra",
-    phoneNumber: "+91 5432109876",
-    gender: "Male",
-    age: 35,
-    productCategory: "Electronics",
-    quantity: 1,
-    totalAmount: 15000,
-    customerRegion: "North",
-    productId: "PROD0006",
-    employeeName: "Anita Verma",
-  },
-  {
-    transactionId: 1234573,
-    date: "2025-12-07",
-    customerId: "CUST12022",
-    customerName: "Divya Nair",
-    phoneNumber: "+91 4321098765",
-    gender: "Female",
-    age: 27,
-    productCategory: "Clothing",
-    quantity: 2,
-    totalAmount: 2200,
-    customerRegion: "West",
-    productId: "PROD0007",
-    employeeName: "Suresh Kumar",
-  },
-  {
-    transactionId: 1234574,
-    date: "2025-12-08",
-    customerId: "CUST12023",
-    customerName: "Vikash Reddy",
-    phoneNumber: "+91 3210987654",
-    gender: "Male",
-    age: 29,
-    productCategory: "Books",
-    quantity: 5,
-    totalAmount: 1250,
-    customerRegion: "South",
-    productId: "PROD0008",
-    employeeName: "Lakshmi Menon",
-  },
-]
+const API_BASE = 'http://localhost:5000/api/query'
+const fetcher = (url: string) => axios.get<TransactionsApiResponse>(url).then(res => res.data)
 
+const TableView = ({ filters }: TableViewProps) => {
+  const queryString = buildQueryString(filters)
+  const { data, error, isLoading } = useSWR(`${API_BASE}?${queryString}`, fetcher)
 
-const TableView = () => {
+  if (error) return <div>Error loading transactions</div>
+  if (isLoading) return <div>Loading...</div>
+
+  const transactions: TransactionResponse[] = data?.data || []
+
   return (
     <div className='px-3 py-4'>
       <Table>
@@ -161,17 +55,20 @@ const TableView = () => {
           {transactions.map((transaction) => (
             <TableRow key={transaction.transactionId}>
               <TableCell className="font-medium">{transaction.transactionId}</TableCell>
-              <TableCell>{transaction.date}</TableCell>
+              <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
               <TableCell>{transaction.customerId}</TableCell>
-              <TableCell>{transaction.customerName}</TableCell>
-              <TableCell className=' flex justify-start items-center'>{transaction.phoneNumber} <CopyButton text={transaction.phoneNumber}/></TableCell>
-              <TableCell>{transaction.gender}</TableCell>
-              <TableCell>{transaction.age}</TableCell>
-              <TableCell>{transaction.productCategory}</TableCell>
+              <TableCell>{transaction.customer.customerName}</TableCell>
+              <TableCell className='flex justify-start items-center'>
+                {transaction.customer.phoneNumber} 
+                <CopyButton text={transaction.customer.phoneNumber} />
+              </TableCell>
+              <TableCell>{transaction.customer.gender}</TableCell>
+              <TableCell>{transaction.customer.age}</TableCell>
+              <TableCell>{transaction.product.productCategory}</TableCell>
               <TableCell>{transaction.quantity}</TableCell>
               <TableCell className="text-right">₹{transaction.totalAmount.toLocaleString()}</TableCell>
-              <TableCell>{transaction.customerRegion}</TableCell>
-              <TableCell>{transaction.productId}</TableCell>
+              <TableCell>{transaction.customer.customerRegion}</TableCell>
+              <TableCell>{transaction.productId || 'N/A'}</TableCell>
               <TableCell>{transaction.employeeName}</TableCell>
             </TableRow>
           ))}

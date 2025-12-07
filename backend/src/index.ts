@@ -1,8 +1,15 @@
 import express from "express"
 import queryRouter from "./routes/query.route"
-
+import cors from 'cors';
 
 const app = express()
+
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use('/api/query', queryRouter);
 
 const PORT = process.env.PORT || 5000;

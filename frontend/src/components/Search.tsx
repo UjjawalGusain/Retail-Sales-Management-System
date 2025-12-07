@@ -1,7 +1,13 @@
 import React from 'react'
 import { Input } from "@/components/ui/input"
+import { FilterInterface } from '@/app/page';
 
-const Search = () => {
+interface SearchBarProps {
+  filters: FilterInterface;
+  setFilters: React.Dispatch<React.SetStateAction<FilterInterface>>;
+}
+
+const Search = ({ filters, setFilters }: SearchBarProps) => {
   return (
     <div>
         <div className='w-full h-12 flex justify-between items-center px-3 text-accent-foreground border-b-2'>
