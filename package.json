@@ -2,9 +2,17 @@
   "name": "retail-sales-management-system",
   "version": "1.0.0",
   "main": "index.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "pnpm --parallel dev",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build"
   },
+  "devDependencies": {
+    "pnpm": "^10.0.0"
+  },
+  "packageManager": "pnpm@10.0.0",
   "author": "",
   "license": "ISC",
   "description": ""

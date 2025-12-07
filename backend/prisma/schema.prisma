@@ -42,6 +42,7 @@ model Customer {
   @@index([age])
   @@index([phoneNumber])
   @@index([customerName], type: Brin)
+  @@index([gender, customerRegion, age])
 }
 
 model Product {
@@ -94,4 +95,5 @@ model Transaction {
   @@index([date])
   @@index([paymentMethod])
   @@index([paymentMethod, date])
+  @@index([date, paymentMethod, customerId])
 }
