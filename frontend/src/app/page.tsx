@@ -4,6 +4,7 @@ import Search from '@/components/Search'
 import FilterBar from '@/components/FilterBar'
 import TableView from '@/components/TableView'
 
+
 export interface FilterInterface {
     page?: string;
     limit?: string;
@@ -33,7 +34,7 @@ const Dashboard = () => {
         <div>
             <Search filters={filters} setFilters={setFilters} />
             <FilterBar filters={filters} setFilters={setFilters} />
-            <TableView filters={filters} />
+            <TableView filters={filters} setFilters={setFilters}/>
         </div>
     )
 }

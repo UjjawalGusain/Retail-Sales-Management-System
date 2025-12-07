@@ -3,5 +3,8 @@ import QueryController from "src/controllers/query.controller";
 
 const router = Router();
 router.get("/", QueryController.queryTransactions);
+router.get("/totalUnits", QueryController.getTotalUnitsSold)
+router.get("/totalAmount", QueryController.getTotalAmount)
+router.get("/totalDiscount", QueryController.getTotalDiscount)
 
 export default router;

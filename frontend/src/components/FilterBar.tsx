@@ -1,20 +1,15 @@
-import React from 'react'
+import React, {useState, useEffect} from 'react'
 import {
     NativeSelect,
-    NativeSelectOptGroup,
     NativeSelectOption,
 } from "@/components/ui/native-select"
 import { IoReload } from "react-icons/io5";
 import { CiCircleInfo } from "react-icons/ci";
 import { FilterInterface } from '@/app/page';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
 import AgeRange from './FilterBar/AgeRange';
 import Calendar from './FilterBar/Calendar';
 import Tags from './FilterBar/Tags';
+import axios from 'axios';
 
 
 export interface FilterBarProps {
@@ -70,6 +65,38 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
     const updateFilter = (field: keyof FilterInterface, value: string) => {
         setFilters(prev => ({ ...prev, [field]: value || undefined, page: '1' }));
     };
+
+    const [totalUnits, setTotalUnits] = useState("");
+    const [totalAmount, setTotalAmount] = useState("");
+    const [totalSRAmount, setTotalSRAmount] = useState(0);
+    const [totalDiscount, setTotalDiscount] = useState("");
+    const [totalSRDiscount, setTotalSRDiscount] = useState(0);
+
+    useEffect(() => {
+        const getTotalUnitsSold = async () => {
+            const res = await axios.get("http://localhost:5000/api/query/totalUnits");
+            console.log("res: ", res);
+            setTotalUnits(res?.data.totalUnitsSold);
+        }
+
+        const getTotalAmount = async () => {
+            const res = await axios.get("http://localhost:5000/api/query/totalAmount");
+            console.log("res: ", res);
+            setTotalAmount(Number(res?.data.totalAmount).toLocaleString());
+            setTotalSRAmount(res?.data.salesRecords);
+        }
+
+        const getTotalDiscount = async () => {
+            const res = await axios.get("http://localhost:5000/api/query/totalDiscount");
+            console.log("res: ", res);
+            setTotalDiscount(Number(res?.data.totalDiscount).toLocaleString());
+            setTotalSRDiscount(res?.data.discountRecords);
+        }
+
+        getTotalUnitsSold();
+        getTotalAmount();
+        getTotalDiscount();
+    }, [])
 
     const renderSelect = (field: keyof typeof nativeSelectConfig, key: keyof FilterInterface) => {
         const config = nativeSelectConfig[field];
@@ -136,15 +163,15 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
             <div className='flex gap-3'>
                 <div className='flex flex-col w-fit px-3 py-2 border-2 rounded-md'>
                     <div className='flex items-center gap-1 text-sm'>Total units sold <CiCircleInfo /></div>
-                    <div className='text-base font-semibold'>10</div>
+                    <div className='text-base font-semibold'>{totalUnits}</div>
                 </div>
                 <div className='flex flex-col w-fit px-3 py-2 border-2 rounded-md'>
                     <div className='flex items-center gap-1 text-sm'>Total amount <CiCircleInfo /></div>
-                    <div className='text-base font-semibold'>₹89,000</div>
+                    <div className='text-base font-semibold'>₹{totalAmount} ({totalSRAmount} SRs)</div>
                 </div>
                 <div className='flex flex-col w-fit px-3 py-2 border-2 rounded-md'>
                     <div className='flex items-center gap-1 text-sm'>Total Discount <CiCircleInfo /></div>
-                    <div className='text-base font-semibold'>₹15,000</div>
+                    <div className='text-base font-semibold'>₹{totalDiscount} ({totalSRDiscount} SRs)</div>
                 </div>
             </div>
         </div>

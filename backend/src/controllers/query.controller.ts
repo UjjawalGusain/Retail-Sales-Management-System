@@ -109,36 +109,35 @@ class QueryController {
 
             const orderBy = orderByMap[safeOrderBy];
 
-            const [rawData, totalRaw] = await Promise.all([
-                prisma.transaction.findMany({
-                    select: {
-                        transactionId: true,
-                        date: true,
-                        customerId: true,
-                        productId: true,
-                        quantity: true,
-                        totalAmount: true,
-                        employeeName: true,
-                        customer: {
-                            select: {
-                                customerName: true,
-                                phoneNumber: true,
-                                gender: true,
-                                age: true,
-                                customerRegion: true
-                            }
-                        },
-                        product: {
-                            select: { productCategory: true }
+            const rawData = await prisma.transaction.findMany({
+                select: {
+                    transactionId: true,
+                    date: true,
+                    customerId: true,
+                    productId: true,
+                    quantity: true,
+                    totalAmount: true,
+                    employeeName: true,
+                    customer: {
+                        select: {
+                            customerName: true,
+                            phoneNumber: true,
+                            gender: true,
+                            age: true,
+                            customerRegion: true
                         }
                     },
-                    where,
-                    orderBy,
-                    skip,
-                    take: limit
-                }),
-                prisma.transaction.count({ where })
-            ]);
+                    product: {
+                        select: { productCategory: true }
+                    }
+                },
+                where,
+                orderBy,
+                skip,
+                take: limit
+            })
+
+            const totalRaw = await prisma.transaction.count({ where })
 
             const data: TransactionResponse[] = rawData.map((transaction: any) => ({
                 ...transaction,
@@ -163,7 +162,6 @@ class QueryController {
                 }
             };
 
-
             res.json(response);
 
         } catch (error) {
@@ -176,6 +174,83 @@ class QueryController {
             res.status(500).json(errorResponse);
         }
     }
+
+    async getTotalUnitsSold(req: Request, res: Response) {
+        try {
+            const totalUnits = await prisma.transaction.aggregate({
+                _sum: {
+                    quantity: true
+                }
+            })
+
+            res.json({
+                success: true,
+                totalUnitsSold: Number(totalUnits._sum.quantity || 0)
+            })
+        } catch (error) {
+            console.error('Total units sold error:', error)
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch total units sold'
+            })
+        }
+    }
+
+    async getTotalAmount(req: Request, res: Response) {
+        try {
+            const totalAmountData = await prisma.transaction.aggregate({
+                _sum: {
+                    totalAmount: true
+                },
+                _count: true
+            })
+
+            const salesRecordsData = await prisma.transaction.count()
+
+            res.json({
+                success: true,
+                totalAmount: Number(totalAmountData._sum.totalAmount || 0),
+                salesRecords: salesRecordsData
+            })
+        } catch (error) {
+            console.error('Total amount error:', error)
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch total amount'
+            })
+        }
+    }
+
+    async getTotalDiscount(req: Request, res: Response) {
+        try {
+            const discountData = await prisma.transaction.aggregate({
+                _sum: {
+                    totalAmount: true,
+                    finalAmount: true
+                },
+                _count: true
+            })
+
+            const discountRecordsData = await prisma.transaction.count()
+
+            const totalDiscount = Number(discountData._sum.totalAmount || 0) - Number(discountData._sum.finalAmount || 0)
+            const discountRecords = discountRecordsData
+
+            res.json({
+                success: true,
+                totalDiscount: totalDiscount,
+                discountRecords: discountRecords
+            })
+        } catch (error) {
+            console.error('Total discount error:', error)
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch total discount'
+            })
+        }
+    }
+
+
 }
 
 export default new QueryController();

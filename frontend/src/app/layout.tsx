@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Outfit } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { SidebarProvider } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/Sidebar";
+
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
@@ -32,7 +35,16 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
             <body className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased bg-background text-foreground w-full`}>
                 <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-                    <main className="flex-1">{children}</main>
+
+                    <SidebarProvider style={{
+                        "--sidebar-width": "14rem",
+                        "--sidebar-width-mobile": "14rem",
+                    }}>
+                        <AppSidebar />
+                        <main className="flex-1">
+                            {children}
+                        </main>
+                    </SidebarProvider>
                 </ThemeProvider>
             </body>
         </html >

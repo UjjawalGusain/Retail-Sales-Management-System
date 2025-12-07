@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { Input } from "@/components/ui/input"
 import { FilterInterface } from '@/app/page';
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 interface SearchBarProps {
   filters: FilterInterface;
@@ -54,7 +55,10 @@ const Search = ({ filters, setFilters }: SearchBarProps) => {
   return (
     <div>
       <div className='w-full h-12 flex justify-between items-center px-3 text-accent-foreground border-b-2'>
-        <div className='text-base font-sans font-medium'>Sales Management System</div>
+        
+        <div className='text-base font-sans font-medium flex justify-center items-center'>
+          <SidebarTrigger/>
+          Sales Management System</div>
         <div className='relative max-w-96'>
           <Input
             id="search"

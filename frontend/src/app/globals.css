@@ -50,7 +50,7 @@ html {
   --chart-4: #ef4444;
   --chart-5: #8b5cf6;
 
-  --sidebar: #ffffff;
+  --sidebar: #f8fafc;
   --sidebar-foreground: #1a1a1a;
   --sidebar-primary: #2563eb;
   --sidebar-primary-foreground: #ffffff;
@@ -58,6 +58,7 @@ html {
   --sidebar-accent-foreground: #1a1a1a;
   --sidebar-border: #e2e8f0;
   --sidebar-ring: #3b82f6;
+
 }
 
 
