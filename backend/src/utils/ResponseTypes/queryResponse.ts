@@ -1,4 +1,4 @@
-import { Gender, CustomerRegion } from "src/generated/prisma/enums";
+import { Gender, CustomerRegion } from "./../../generated/enums"
 
 export interface TransactionResponse {
   transactionId: string;
