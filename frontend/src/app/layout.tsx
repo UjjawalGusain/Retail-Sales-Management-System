@@ -5,7 +5,7 @@ import { Outfit } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/Sidebar";
-
+import type { CSSProperties } from "react"
 
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
@@ -39,7 +39,7 @@ export default function RootLayout({
                     <SidebarProvider style={{
                         "--sidebar-width": "14rem",
                         "--sidebar-width-mobile": "14rem",
-                    }}>
+                    } as CSSProperties}>
                         <AppSidebar />
                         <main className="flex-1">
                             {children}
