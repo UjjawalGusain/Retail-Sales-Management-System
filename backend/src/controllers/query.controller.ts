@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Prisma } from "src/generated/prisma";
+import { Prisma } from "src/generated/prisma/client";
 import prisma from "src/services/prismaClient";
 import type {
     TransactionsApiResponse,

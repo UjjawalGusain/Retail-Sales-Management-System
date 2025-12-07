@@ -1,4 +1,4 @@
-import { Gender, CustomerRegion } from "src/generated/prisma";
+import { Gender, CustomerRegion } from "src/generated/prisma/enums";
 export interface TransactionsQueryParams {
   page?: string;
   limit?: string;
