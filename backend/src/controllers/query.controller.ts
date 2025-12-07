@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { Prisma } from "src/generated/prisma/client";
-import prisma from "src/services/prismaClient";
+import { Prisma } from "./../../src/generated/prisma/client"
+import prisma from "./../services/prismaClient"
 import type {
     TransactionsApiResponse,
     ApiErrorResponse,
