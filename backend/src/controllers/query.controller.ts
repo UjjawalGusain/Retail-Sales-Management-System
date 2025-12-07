@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Prisma } from "./../generated/client"
-import prisma from "./../services/prismaClient"
+import prisma from "./../services/prismaClient.js"
 import type {
     TransactionsApiResponse,
     ApiErrorResponse,
