@@ -1,5 +1,5 @@
 import express from "express"
-import queryRouter from "./routes/query.route"
+import queryRouter from "./routes/query.route.js"
 import cors from 'cors';
 
 const app = express()

@@ -1,5 +1,5 @@
 import {Router} from "express"
-import QueryController from "src/controllers/query.controller";
+import QueryController from "src/controllers/query.controller.js";
 
 const router = Router();
 router.get("/", QueryController.queryTransactions);
