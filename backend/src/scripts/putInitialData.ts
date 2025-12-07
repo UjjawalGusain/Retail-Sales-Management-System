@@ -14,7 +14,6 @@ const adapter = new PrismaPg(pool);
 
 const prisma = new PrismaClient({ adapter });
 const BATCH_SIZE = 10000;
-const skip_rows = 995042;
 
 async function main() {
     const customersMap = new Map<string, any>();
