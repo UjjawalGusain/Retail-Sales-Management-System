@@ -10,6 +10,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+
+
 app.use('/api/query', queryRouter);
 
 const PORT = process.env.PORT || 5000;
