@@ -7,7 +7,7 @@ import type {
     TransactionResponse
 } from "./../utils/ResponseTypes/queryResponse"
 import type { TransactionsQueryParams } from "./../utils/RequestTypes/queryRequest";
-import { buildWhereClause } from "./../utils/buildFilters";
+import { buildWhereClause } from "./../utils/buildFilters.js";
 
 class QueryController {
     async queryTransactions(
