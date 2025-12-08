@@ -18,39 +18,38 @@ export function buildWhereClause(query: any): Prisma.TransactionWhereInput {
     }
 
     if (paymentMethod) {
-        where.paymentMethod = {
-            equals: paymentMethod,
-            mode: "insensitive"
-        };
+        where.paymentMethod = { equals: paymentMethod };
     }
 
     const hasCustomerFilters =
-        gender || customerRegion || minAge || maxAge ||
+        gender || customerRegion || minAge || maxAge || 
         customerNamePrefix || phonePrefix;
 
     if (hasCustomerFilters) {
-        where.customer = {};
+        if (!where.customer) where.customer = {};
 
         if (gender) where.customer.gender = gender;
         if (customerRegion) where.customer.customerRegion = customerRegion;
 
         if (minAge || maxAge) {
-            where.customer.age = {};
-            if (minAge) where.customer.age.gte = parseInt(minAge);
-            if (maxAge) where.customer.age.lte = parseInt(maxAge);
+            if (!where.customer.age) {
+                where.customer.age = {};
+            }
+            if (minAge) (where.customer.age as Prisma.IntFilter).gte = parseInt(minAge);
+            if (maxAge) (where.customer.age as Prisma.IntFilter).lte = parseInt(maxAge);
         }
 
         if (customerNamePrefix) {
             where.customer.customerName = {
                 startsWith: customerNamePrefix,
-                mode: "insensitive"
+                mode: "insensitive",
             };
         }
 
         if (phonePrefix) {
             where.customer.phoneNumber = {
                 startsWith: phonePrefix,
-                mode: "insensitive"
+                mode: "insensitive",
             };
         }
     }
@@ -58,12 +57,12 @@ export function buildWhereClause(query: any): Prisma.TransactionWhereInput {
     const hasProductFilters = productCategory || tags;
 
     if (hasProductFilters) {
-        where.product = {};
+        if (!where.product) where.product = {};
 
         if (productCategory) {
             where.product.productCategory = {
                 equals: productCategory,
-                mode: "insensitive"
+                mode: "insensitive",
             };
         }
 
