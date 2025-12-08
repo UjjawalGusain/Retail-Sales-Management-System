@@ -4,6 +4,9 @@
 ## Overview
 SDE Intern Assignment for TruEstate implementing a Retail Sales Management System Dashboard with advanced search, multi-select filters, sorting and pagination across structured sales data.
 
+## Database Models
+<img width="1528" height="781" alt="supabase-schema-pgzgogtknimitpobzibb" src="https://github.com/user-attachments/assets/c24655f2-d8b0-40e7-8ddd-e6c020f571e2" />
+
 
 ## Backend Architecture
 
