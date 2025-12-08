@@ -1,4 +1,4 @@
-import { Gender, CustomerRegion } from "./../../generated/enums"
+import { Gender, CustomerRegion } from "./../../../src/generated";
 
 export interface TransactionResponse {
   transactionId: string;
