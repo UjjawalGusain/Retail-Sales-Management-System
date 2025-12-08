@@ -1,4 +1,5 @@
-import React, {useState, useEffect} from 'react'
+import React from 'react'
+import useSWR from 'swr'
 import {
     NativeSelect,
     NativeSelectOption,
@@ -9,8 +10,7 @@ import { FilterInterface } from '@/app/page';
 import AgeRange from './FilterBar/AgeRange';
 import Calendar from './FilterBar/Calendar';
 import Tags from './FilterBar/Tags';
-import axios from 'axios';
-
+import {buildKPIQueryString} from "./../utils/buildQueryString"
 
 export interface FilterBarProps {
     filters: FilterInterface;
@@ -61,54 +61,49 @@ const nativeSelectConfig = {
     },
 } as const;
 
+const BASE_API_URL = "https://retail-sales-management-system-back.vercel.app";
+
+const fetcher = (url: string) =>
+    fetch(url).then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch");
+        return r.json();
+    });
+
 const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
+    const qs = buildKPIQueryString(filters);
+
+    const { data: unitsData } = useSWR(
+        `${BASE_API_URL}/api/query/totalUnits?${qs}`,
+        fetcher
+    );
+
+    const { data: amountData } = useSWR(
+        `${BASE_API_URL}/api/query/totalAmount?${qs}`,
+        fetcher
+    );
+
+    const { data: discountData } = useSWR(
+        `${BASE_API_URL}/api/query/totalDiscount?${qs}`,
+        fetcher
+    );
+
     const updateFilter = (field: keyof FilterInterface, value: string) => {
-        setFilters(prev => ({ ...prev, [field]: value || undefined, page: '1' }));
+        setFilters(prev => ({
+            ...prev,
+            [field]: value || undefined,
+            page: '1'
+        }));
     };
-
-    const [totalUnits, setTotalUnits] = useState("");
-    const [totalAmount, setTotalAmount] = useState("");
-    const [totalSRAmount, setTotalSRAmount] = useState(0);
-    const [totalDiscount, setTotalDiscount] = useState("");
-    const [totalSRDiscount, setTotalSRDiscount] = useState(0);
-
-    const BASE_API_URL = "https://retail-sales-management-system-back.vercel.app";
-
-    useEffect(() => {
-        const getTotalUnitsSold = async () => {
-            const res = await axios.get(`${BASE_API_URL}/api/query/totalUnits`);
-            console.log("res: ", res);
-            setTotalUnits(res?.data.totalUnitsSold);
-        }
-
-        const getTotalAmount = async () => {
-            const res = await axios.get(`${BASE_API_URL}/api/query/totalAmount`);
-            console.log("res: ", res);
-            setTotalAmount(Number(res?.data.totalAmount).toLocaleString());
-            setTotalSRAmount(res?.data.salesRecords);
-        }
-
-        const getTotalDiscount = async () => {
-            const res = await axios.get(`${BASE_API_URL}/api/query/totalDiscount`);
-            console.log("res: ", res);
-            setTotalDiscount(Number(res?.data.totalDiscount).toLocaleString());
-            setTotalSRDiscount(res?.data.discountRecords);
-        }
-
-        getTotalUnitsSold();
-        getTotalAmount();
-        getTotalDiscount();
-    }, [])
 
     const renderSelect = (field: keyof typeof nativeSelectConfig, key: keyof FilterInterface) => {
         const config = nativeSelectConfig[field];
-        const currentValue = filters[key as keyof FilterInterface] as string || '';
+        const currentValue = filters[key] || '';
 
         return (
             <NativeSelect
                 key={field}
                 value={currentValue}
-                onChange={(e) => updateFilter(key as keyof FilterInterface, e.target.value)}
+                onChange={(e) => updateFilter(key, e.target.value)}
             >
                 {config.options.map((option) => (
                     <NativeSelectOption key={option.value} value={option.value}>
@@ -132,15 +127,14 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
 
                     {renderSelect('customerRegion', 'customerRegion')}
                     {renderSelect('gender', 'gender')}
-                    <AgeRange filters={filters} setFilters={setFilters}/>
-                    
 
+                    <AgeRange filters={filters} setFilters={setFilters} />
                     {renderSelect('productCategory', 'productCategory')}
 
-                    <Tags filters={filters} setFilters={setFilters}/>
-
+                    <Tags filters={filters} setFilters={setFilters} />
                     {renderSelect('paymentMethod', 'paymentMethod')}
-                    <Calendar filters={filters} setFilters={setFilters}/>
+
+                    <Calendar filters={filters} setFilters={setFilters} />
                 </div>
 
                 <NativeSelect
@@ -164,16 +158,30 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
 
             <div className='flex gap-3'>
                 <div className='flex flex-col w-fit px-3 py-2 border-2 rounded-md'>
-                    <div className='flex items-center gap-1 text-sm'>Total units sold <CiCircleInfo /></div>
-                    <div className='text-base font-semibold'>{totalUnits}</div>
+                    <div className='flex items-center gap-1 text-sm'>
+                        Total units sold <CiCircleInfo />
+                    </div>
+                    <div className='text-base font-semibold'>
+                        {unitsData?.totalUnitsSold ?? '—'}
+                    </div>
                 </div>
+
                 <div className='flex flex-col w-fit px-3 py-2 border-2 rounded-md'>
-                    <div className='flex items-center gap-1 text-sm'>Total amount <CiCircleInfo /></div>
-                    <div className='text-base font-semibold'>₹{totalAmount} ({totalSRAmount} SRs)</div>
+                    <div className='flex items-center gap-1 text-sm'>
+                        Total amount <CiCircleInfo />
+                    </div>
+                    <div className='text-base font-semibold'>
+                        ₹{Number(amountData?.totalAmount || 0).toLocaleString()} ({amountData?.salesRecords || 0} SRs)
+                    </div>
                 </div>
+
                 <div className='flex flex-col w-fit px-3 py-2 border-2 rounded-md'>
-                    <div className='flex items-center gap-1 text-sm'>Total Discount <CiCircleInfo /></div>
-                    <div className='text-base font-semibold'>₹{totalDiscount} ({totalSRDiscount} SRs)</div>
+                    <div className='flex items-center gap-1 text-sm'>
+                        Total Discount <CiCircleInfo />
+                    </div>
+                    <div className='text-base font-semibold'>
+                        ₹{Number(discountData?.totalDiscount || 0).toLocaleString()} ({discountData?.discountRecords || 0} SRs)
+                    </div>
                 </div>
             </div>
         </div>

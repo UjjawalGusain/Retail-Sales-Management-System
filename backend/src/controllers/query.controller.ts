@@ -7,6 +7,7 @@ import type {
     TransactionResponse
 } from "./../utils/ResponseTypes/queryResponse"
 import type { TransactionsQueryParams } from "./../utils/RequestTypes/queryRequest";
+import { buildWhereClause } from "./../utils/buildFilters";
 
 class QueryController {
     async queryTransactions(
@@ -17,77 +18,13 @@ class QueryController {
         const limit = Math.min(parseInt(req.query.limit || '10'), 100);
 
         const {
-            startDate, endDate,
-            paymentMethod,
-            gender, customerRegion, minAge, maxAge,
-            customerNamePrefix, phonePrefix,
-            productCategory, tags,
             orderBy: orderByParam = 'customerName',
             orderByType = 'asc'
         } = req.query;
 
         try {
             const skip = (page - 1) * limit;
-            const where: Prisma.TransactionWhereInput = {};
-
-            if (startDate || endDate) {
-                where.date = {};
-                if (startDate) where.date!.gte = new Date(startDate);
-                if (endDate) where.date!.lt = new Date(endDate);
-            }
-
-            if (paymentMethod) {
-                where.paymentMethod = {
-                    equals: paymentMethod,
-                    mode: 'insensitive'
-                };
-            }
-
-            const hasCustomerFilters = gender || customerRegion || minAge || maxAge ||
-                customerNamePrefix || phonePrefix;
-            if (hasCustomerFilters) {
-                where.customer = {};
-
-                if (gender) where.customer!.gender = gender;
-                if (customerRegion) where.customer!.customerRegion = customerRegion;
-
-                if (minAge || maxAge) {
-                    where.customer!.age = {};
-                    if (minAge) where.customer!.age!.gte = parseInt(minAge);
-                    if (maxAge) where.customer!.age!.lte = parseInt(maxAge);
-                }
-
-                if (customerNamePrefix) {
-                    where.customer!.customerName = {
-                        startsWith: customerNamePrefix,
-                        mode: 'insensitive'
-                    };
-                }
-
-                if (phonePrefix) {
-                    where.customer!.phoneNumber = {
-                        startsWith: phonePrefix,
-                        mode: 'insensitive'
-                    };
-                }
-            }
-
-            const hasProductFilters = productCategory || tags;
-            if (hasProductFilters) {
-                where.product = {};
-
-                if (productCategory) {
-                    where.product!.productCategory = {
-                        equals: productCategory,
-                        mode: 'insensitive'
-                    };
-                }
-
-                if (tags) {
-                    const tagArray = Array.isArray(tags) ? tags : tags.split(',');
-                    where.product!.tags = { hasEvery: tagArray };
-                }
-            }
+            const where = buildWhereClause(req.query);
 
             type SortableField = 'customerName' | 'totalAmount' | 'date' | 'quantity';
             const validSortFields: SortableField[] = ['customerName', 'totalAmount', 'date', 'quantity'];
@@ -177,78 +114,74 @@ class QueryController {
 
     async getTotalUnitsSold(req: Request, res: Response) {
         try {
-            const totalUnits = await prisma.transaction.aggregate({
-                _sum: {
-                    quantity: true
-                }
-            })
+            const where = buildWhereClause(req.query);
+
+            const result = await prisma.transaction.aggregate({
+                where,
+                _sum: { quantity: true }
+            });
 
             res.json({
                 success: true,
-                totalUnitsSold: Number(totalUnits._sum.quantity || 0)
-            })
+                totalUnitsSold: Number(result._sum.quantity || 0)
+            });
         } catch (error) {
-            console.error('Total units sold error:', error)
-            res.status(500).json({
-                success: false,
-                error: 'Failed to fetch total units sold'
-            })
+            console.error("Total units sold error:", error);
+            res.status(500).json({ success: false, error: "Failed to fetch total units sold" });
         }
     }
+
 
     async getTotalAmount(req: Request, res: Response) {
         try {
-            const totalAmountData = await prisma.transaction.aggregate({
-                _sum: {
-                    totalAmount: true
-                },
-                _count: true
-            })
+            const where = buildWhereClause(req.query);
 
-            const salesRecordsData = await prisma.transaction.count()
+            const result = await prisma.transaction.aggregate({
+                where,
+                _sum: { totalAmount: true },
+                _count: true
+            });
 
             res.json({
                 success: true,
-                totalAmount: Number(totalAmountData._sum.totalAmount || 0),
-                salesRecords: salesRecordsData
-            })
+                totalAmount: Number(result._sum.totalAmount || 0),
+                salesRecords: result._count
+            });
         } catch (error) {
-            console.error('Total amount error:', error)
-            res.status(500).json({
-                success: false,
-                error: 'Failed to fetch total amount'
-            })
+            console.error("Total amount error:", error);
+            res.status(500).json({ success: false, error: "Failed to fetch total amount" });
         }
     }
 
+
     async getTotalDiscount(req: Request, res: Response) {
         try {
-            const discountData = await prisma.transaction.aggregate({
+            const where = buildWhereClause(req.query);
+
+            const result = await prisma.transaction.aggregate({
+                where,
                 _sum: {
                     totalAmount: true,
                     finalAmount: true
                 },
                 _count: true
-            })
+            });
 
-            const discountRecordsData = await prisma.transaction.count()
-
-            const totalDiscount = Number(discountData._sum.totalAmount || 0) - Number(discountData._sum.finalAmount || 0)
-            const discountRecords = discountRecordsData
+            const totalDiscount =
+                Number(result._sum.totalAmount || 0) -
+                Number(result._sum.finalAmount || 0);
 
             res.json({
                 success: true,
-                totalDiscount: totalDiscount,
-                discountRecords: discountRecords
-            })
+                totalDiscount,
+                discountRecords: result._count
+            });
         } catch (error) {
-            console.error('Total discount error:', error)
-            res.status(500).json({
-                success: false,
-                error: 'Failed to fetch total discount'
-            })
+            console.error("Total discount error:", error);
+            res.status(500).json({ success: false, error: "Failed to fetch total discount" });
         }
     }
+
 
 
 }
