@@ -5,7 +5,7 @@ import cors from 'cors';
 const app = express()
 
 app.use(cors({
-  origin: ['https://retail-sales-management-dashboard.vercel.app/'],
+  origin: ['https://retail-sales-management-dashboard.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
