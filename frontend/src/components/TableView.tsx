@@ -23,7 +23,7 @@ interface TableViewProps {
   setFilters: React.Dispatch<React.SetStateAction<FilterInterface>>;
 }
 
-const API_BASE = 'http://localhost:5000/api/query'
+const API_BASE = 'https://retail-sales-management-system-back.vercel.app/api/query'
 const fetcher = (url: string) => axios.get<TransactionsApiResponse>(url).then(res => res.data)
 
 const TableView = ({ filters, setFilters }: TableViewProps) => {

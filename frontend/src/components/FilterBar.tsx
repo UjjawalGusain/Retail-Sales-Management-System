@@ -72,22 +72,24 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
     const [totalDiscount, setTotalDiscount] = useState("");
     const [totalSRDiscount, setTotalSRDiscount] = useState(0);
 
+    const BASE_API_URL = "https://retail-sales-management-system-back.vercel.app";
+
     useEffect(() => {
         const getTotalUnitsSold = async () => {
-            const res = await axios.get("http://localhost:5000/api/query/totalUnits");
+            const res = await axios.get(`${BASE_API_URL}/api/query/totalUnits`);
             console.log("res: ", res);
             setTotalUnits(res?.data.totalUnitsSold);
         }
 
         const getTotalAmount = async () => {
-            const res = await axios.get("http://localhost:5000/api/query/totalAmount");
+            const res = await axios.get(`${BASE_API_URL}/api/query/totalAmount`);
             console.log("res: ", res);
             setTotalAmount(Number(res?.data.totalAmount).toLocaleString());
             setTotalSRAmount(res?.data.salesRecords);
         }
 
         const getTotalDiscount = async () => {
-            const res = await axios.get("http://localhost:5000/api/query/totalDiscount");
+            const res = await axios.get(`${BASE_API_URL}/api/query/totalDiscount`);
             console.log("res: ", res);
             setTotalDiscount(Number(res?.data.totalDiscount).toLocaleString());
             setTotalSRDiscount(res?.data.discountRecords);
