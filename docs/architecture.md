@@ -30,9 +30,8 @@ The backend is a TypeScript + Express application deployed as a serverless/Node 
   - `src/controllers/query.controller.ts` contains request handlers for:
     - Paginated, filterable transaction queries
     - KPI endpoints such as:
-      - Total units sold (sum of `quantity`)
-      - Total revenue (sum of `totalAmount`)
-      - Total discount (sum of `totalAmount - finalAmount`)
+      - Light Transaction Queries: Only query for pages without aggregations
+      - Heavy Transaction Queries: Query for pages with aggregations
   - Controllers parse and validate query parameters, build Prisma filters, and shape JSON responses for the frontend.
 
 - **Data Access Layer (Prisma):**
@@ -47,11 +46,10 @@ The backend is a TypeScript + Express application deployed as a serverless/Node 
 
 ### Request Flow
 
-- The frontend sends a request with filters and pagination parameters to `/api/query` (for example, age range, region, tags, order status, date range).
-- The Express route forwards the request to the corresponding controller function.
-- The controller constructs a Prisma `where` object and `orderBy` definition based on validated query parameters.
-- Prisma executes the query against PostgreSQL using the shared `PrismaClient` and connection pool.
-- Results are mapped into a normalized API response shape (rows + meta such as total count, current page, and KPI aggregates) and returned as JSON.
+- The frontend builds a query string from the current filters, pagination, and sort state, then calls either GET `/api/query/lightQuery?{filters & pagination}` or GET `/api/query/heavyQuery?{filters & pagination}` depending on the presence of KPI-related filters and the forceHeavy flag.​
+- The Express route layer forwards the request to the appropriate controller method (getTransactionsLight or getTransactionsHeavy) based on the path.​
+- The controller validates query parameters and constructs Prisma where, orderBy, skip, and take objects, then executes a Prisma transaction to fetch paginated rows plus either a count (light) or aggregations (heavy).​
+- PostgreSQL returns filtered, joined Transaction records and, for heavy queries, aggregate metrics; the controller maps these into a normalized JSON response containing data, pagination, sort, and optional metrics objects.
 
 ### Performance & Reliability
 
@@ -127,55 +125,60 @@ This section describes how data moves between the frontend, backend, and Postgre
 
 ### 1. User Interaction → Filters
 
-- The user interacts with the **Filter Bar** (age range, gender, customer region, tags, order status, date range, etc.).
-- Filter state is stored in React at the page level and updated via debounced handlers to avoid rapid re-queries.
-- The current filter state is serialized into a query string (including pagination and sort options) that becomes the key for SWR data fetching.
+- The user interacts with the **Filter Bar** (age range, gender, customer region, tags, payment method, date range, search prefixes, etc.).
+- Filter state is stored in React state at the page level (`FilterInterface & PaginationInterface`) and updated via direct handlers.
+- `buildQueryString(filters)` serializes non-empty filters, pagination (`page`, `limit`), and sort (`orderBy`, `orderByType`) into a query string.
+- On reset: `resetAllFilters` clears all filters to defaults, calls `onResetKpis()` to clear KPI display, and sets `forceHeavy: true` (client-side flag ignored by backend).
 
 ### 2. Frontend Requests → Backend API
 
-- The **Transactions table** uses SWR + Axios to call the backend endpoint:
-  - `GET /api/query?{filters & pagination}`
-- The **KPI cards** call dedicated endpoints:
-  - `GET /api/query/totalUnits`
-  - `GET /api/query/totalAmount`
-  - `GET /api/query/totalDiscount`
-- SWR uses the query string as a cache key, deduping identical requests and preserving previous data during revalidation.
+- **TableView** uses SWR + Axios with conditional endpoint selection:
+  - Computes `hasKpiFilters` from demographic, product, date range, and tag filters.
+  - Uses `forceHeavy` flag from reset to force heavy queries.
+  - Heavy: `GET /api/query/heavyQuery?{queryString}` (when `hasKpiFilters || forceHeavy`).
+  - Light: `GET /api/query/lightQuery?${queryString}` (no KPI filters, no forceHeavy).
+- SWR config: `{ dedupingInterval: 1000, revalidateOnFocus: false, keepPreviousData: true }` uses full endpoint URL as cache key.
+- **KPIs** are populated from `metrics` in heavy query responses via `onKpisUpdate(data.metrics)` callback to parent state (no separate KPI endpoints).
 
 ### 3. Backend Controllers → Prisma Queries
 
-- Express routes in `src/routes/query.route.ts` forward requests to controller functions in `src/controllers/query.controller.ts`.
-- Controllers:
-  - Parse and validate query parameters (page, pageSize, sort, filters).
-  - Build Prisma `where`, `orderBy`, `skip`, and `take` objects for the `Transaction` model and its relations (`Customer`, `Product`).
-  - For KPIs, use Prisma aggregations:
-    - `aggregate` with `_sum` on `quantity`, `totalAmount`, `finalAmount`.
-    - `count` for SR (sales record) counts.
-- Prisma Client (via `PrismaClient` instance in `src/services/prismaClient.ts`) executes queries against PostgreSQL using the JS engine and `pg` connection pool.
+- Express routes in `src/routes/query.route.ts` dispatch to `src/controllers/query.controller.ts`:
+  - `/lightQuery` → `getTransactionsLight`
+  - `/heavyQuery` → `getTransactionsHeavy`
+- Controllers parse `TransactionsQueryParams`, validate pagination/sort, and use `buildWhereClause` for Prisma `where`.
+- Both execute `prisma.$transaction`:
+  - Light: `[transaction.findMany({...}), transaction.count({ where })]`
+  - Heavy: `[transaction.findMany({...}), transaction.aggregate({ where, _sum: {quantity, totalAmount, finalAmount}, _count: true }), transaction.count({ where })]`
+- `findMany` includes joined `customer` (name, phone, gender, age, region) and `product` (category) with `skip`/`take` for pagination.
 
 ### 4. Database Reads → Structured Responses
 
 - PostgreSQL returns:
-  - Filtered, paginated transaction rows with joined `Customer` and `Product` fields.
-  - Aggregate results for total units, total revenue, total discount, and SR counts.
-- Controllers shape a consistent JSON response:
-  - For tables:
-    - `data`: array of normalized transaction records.
-    - `meta`: `{ totalCount, page, pageSize, hasNextPage, hasPrevPage }`.
-  - For KPIs:
-    - `totalUnitsSold`
-    - `totalAmount` and `salesRecords`
-    - `totalDiscount` and `discountRecords`
-- Errors (validation, timeouts, database issues) are caught and returned as structured error responses.
+  - Light: paginated `Transaction` rows with relations + total count.
+  - Heavy: paginated rows + aggregates (`_sum.quantity`, `_sum.totalAmount`, `_sum.finalAmount`, `_count`) + total count.
+- Controllers shape consistent JSON:
+  - `success: true`
+  - `data: TransactionResponse[]` (with stringified `transactionId`)
+  - `pagination: { page, limit, total, totalPages, hasNext, hasPrev, filters }`
+  - `sort: { orderBy, orderByType }`
+  - Heavy only: `metrics: { totalUnitsSold, totalAmount, totalDiscount, salesRecords }`
+- `totalDiscount` computed as `totalAmount - finalAmount` sums; errors return `{ success: false, error: string }`.
 
 ### 5. Response Rendering → UI Updates
 
-- SWR hooks in the frontend receive the JSON responses:
-  - On **loading**: show skeletons/spinners in table and KPI cards.
-  - On **success**: render rows, update KPIs, and sync pagination controls.
-  - On **error**: render the shared `ErrorPage` component in error mode.
-  - On **empty data**: render `ErrorPage` in empty mode with a “Clear Filters” callback.
-- Because SWR caches by key, navigating between filters and pages reuses previously fetched data where possible, minimizing latency and reducing backend load.
-
+- SWR in TableView handles states:
+  - **Loading**: renders global `<Loading />` skeleton.
+  - **Error**: `ErrorPage type="error"` with `onClear={() => setFilters({ page: '1' })}`.
+  - **Empty**: `ErrorPage type="empty"` with full filter reset action.
+  - **Success**: renders shadcn Table, syncs pagination controls, calls `onKpisUpdate(data.metrics)` for KPI cards.
+- KPI cards in FilterBar read parent `kpis` state:
+  - Format `totalUnitsSold`, `₹{totalAmount.toLocaleString()} ({salesRecords} SRs)`, `₹{totalDiscount.toLocaleString()}`.
+  - Show `—` when `kpis` is null (cleared on reset).
+- Filter reset flow:
+  1. `resetAllFilters` clears KPIs + sets `forceHeavy: true`.
+  2. SWR key changes → heavy query fires with clean filters.
+  3. Heavy response populates fresh `metrics` → KPIs update.
+- SWR caching by endpoint URL dedupes identical requests and preserves table data during filter transitions.
 
 ## Folder Structure
 
@@ -276,7 +279,7 @@ README.md
   - Maps raw Prisma results into typed API response objects defined in `ResponseTypes`.
 
 - **`src/routes/query.route.ts`**  
-  Wires HTTP endpoints (e.g. `GET /api/query`, `GET /api/query/totalAmount`) to controller functions. It defines the public REST surface of the backend, leaving validation and DB logic to the controllers.
+  Wires HTTP endpoints (e.g. `GET /api/query`, `GET /api/query/lightQuery`) to controller functions. It defines the public REST surface of the backend, leaving validation and DB logic to the controllers.
 
 - **`src/utils/RequestTypes/queryRequest.ts`**  
   Declares TypeScript types/interfaces for strongly typed query parameters (filters, pagination, sort keys). Controllers use these types to ensure consistent handling of request input.
@@ -294,50 +297,51 @@ README.md
   - Starts the HTTP server or is used as the handler entry in deployment.
 
 ---
-
 ### Frontend
 
 - **`src/app/layout.tsx`**  
-  Root layout for the Next.js app. It sets up HTML structure, global providers (theme, fonts), and wraps all pages inside the sidebar shell and main content area.
+  Root layout for the Next.js app. Sets up HTML structure, global providers (theme, fonts), and wraps all pages inside the sidebar shell and main content area.
 
 - **`src/app/page.tsx`**  
-  Main dashboard page. It composes the sidebar, filter bar, table view, and KPI cards into a single screen and owns the top-level filter and pagination state.
+  Main dashboard page. Owns top-level `filters` (`FilterInterface & PaginationInterface`) and `kpis` (`KpiMetrics | null`) state. Composes Sidebar, FilterBar (passes `filters`, `setFilters`, `kpis`, `onResetKpis`), and TableView (passes `filters`, `setFilters`, `onKpisUpdate`).
 
 - **`src/components/Sidebar.tsx` + `src/components/ui/sidebar.tsx`**  
-  Implement the vertical navigation sidebar using shadcn/Radix primitives. They render application identity (logo + user) and static nav sections such as “Services” and “Invoices”.
+  Vertical navigation sidebar using shadcn/Radix primitives. Renders app identity (logo + user) and static nav sections ("Services", "Invoices").
 
 - **`src/components/FilterBar.tsx` + `src/components/FilterBar/**`**  
-  Provide the user-facing filters for the table:
-  - `AgeRange.tsx`: age range slider/inputs.
-  - `Calendar.tsx`: date range selection.
-  - `Tags.tsx`: multi-select tags control.  
-  These components maintain local filter controls and propagate normalized filter state up to the page.
+  User-facing filter controls with comprehensive reset:
+  - Multi-select dropdowns: `customerRegion`, `gender`, `productCategory`, `paymentMethod`.
+  - `AgeRange.tsx`: `minAge`/`maxAge` range inputs.
+  - `Calendar.tsx`: `startDate`/`endDate` date range.
+  - `Tags.tsx`: multi-select product tags.
+  - Native select for `orderBy`/`orderByType`.
+  - **Reset button**: `resetAllFilters` clears all filters to defaults, sets `forceHeavy: true`, calls `onResetKpis()` to clear KPI display immediately.
 
 - **`src/components/TableView.tsx` + `src/components/TableView/**`**  
-  Render the main transactions table and associated controls:
-  - Fetch paginated data via SWR + Axios.
-  - Display loading state, rows, and pagination controls.
-  - `CopyButton.tsx`: copies the current row or query info to clipboard.
-  - `ErrorPage.tsx`: shared error/empty-state view for table queries.
+  SWR-powered transactions table with conditional endpoint logic:
+  - Computes `hasKpiFilters` from demographic/product/date/tag filters + checks `filters.forceHeavy`.
+  - Heavy endpoint (`/heavyQuery`) when `hasKpiFilters || forceHeavy`; light endpoint (`/lightQuery`) otherwise.
+  - `useEffect` calls `onKpisUpdate(data.metrics)` when heavy response provides KPIs.
+  - Renders shadcn Table, numeric pagination (`getVisiblePages`), `CopyButton.tsx` for phone numbers, `ErrorPage.tsx` for error/empty states.
 
 - **`src/components/ui/**`**  
-  Shadcn-based UI primitives (button, card, input, table, tooltip, etc.) that provide a consistent design system across the app. All higher-level components compose these primitives rather than raw HTML elements.
+  Shadcn-based UI primitives (Table, Button, DropdownMenu, Checkbox, NativeSelect, etc.) providing consistent design system.
 
 - **`src/components/Search.tsx`**  
-  Search input for quick text-based filtering (e.g. by customer name or product), feeding into the same query string builder used by the Filter Bar.
+  Text search inputs for `customerNamePrefix` and `phonePrefix`, feeding into the shared `buildQueryString` pipeline.
 
 - **`src/hooks/use-mobile.ts`**  
-  Custom hook for detecting mobile viewport and toggling responsive behavior (e.g. collapsing the sidebar or adjusting layout for small screens).
+  Custom hook for mobile viewport detection and responsive sidebar collapse.
 
 - **`src/utils/buildQueryString.ts`**  
-  Serializes the current filter + pagination + sort state into a query string consumed by the backend (`/api/query?...`). Centralizes URL construction so table, KPIs, and deep-linking all share the same logic.
+  Serializes filter + pagination + sort state into backend query string. Omits client-only flags like `forceHeavy` to maintain clean backend contracts.
 
 - **`src/utils/types/queryResponse.ts`**  
-  Frontend mirror of the backend response types, ensuring that components rendering table rows and KPIs stay in sync with the API contract.
+  Frontend types mirroring backend responses: `TransactionsApiResponse`, `LightTransactionsApiResponse`, `TransactionResponse`, `KpiMetrics`.
 
 - **`src/lib/utils.ts`**  
-  Shared frontend utility functions (for example, class name merging, formatting helpers) used across components and hooks.
+  Shared utilities (class name merging `cn()`, formatting helpers).
 
-- **`src/app/loading.tsx` & `src/app/globals.css` / `src/styles/globals.css`**  
-  `loading.tsx` shows a global loading skeleton for route transitions; the CSS files define design tokens and global styles that underpin all components.
+- **`src/app/loading.tsx`** **&** **`CSS files`**  
+  Global loading skeleton for route transitions; `globals.css` defines design tokens and component styles.
 
