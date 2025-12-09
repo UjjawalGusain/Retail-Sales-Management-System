@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from 'react'
-import { FilterBarProps } from '../FilterBar'
+import { FilterInterface, PaginationInterface } from '@/app/page';
 import type { DateRange } from "react-day-picker"
 import {
     Popover,
@@ -13,7 +13,12 @@ import { format } from "date-fns"
 import { CalendarIcon, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const CalendarDatePicker = ({ filters, setFilters }: FilterBarProps) => {
+interface CalendarProps {
+  filters: FilterInterface & PaginationInterface;
+  setFilters: (updates: Partial<FilterInterface & PaginationInterface>) => void;
+}
+
+const CalendarDatePicker = ({ filters, setFilters }: CalendarProps) => {
   const [dateRangeOpen, setDateRangeOpen] = useState(false)
   
   const dateRange = {
@@ -22,22 +27,20 @@ const CalendarDatePicker = ({ filters, setFilters }: FilterBarProps) => {
   }
 
   const handleDateSelect = (range: DateRange | undefined) => {
-    setFilters(prev => ({
-      ...prev,
+    setFilters({
       startDate: range?.from ? range.from.toISOString().split('T')[0] : undefined,
       endDate: range?.to ? range.to.toISOString().split('T')[0] : undefined,
       page: '1'
-    }))
+    })
     setDateRangeOpen(false)
   }
 
   const clearDate = () => {
-    setFilters(prev => ({
-      ...prev,
+    setFilters({
       startDate: undefined,
       endDate: undefined,
       page: '1'
-    }))
+    })
   }
 
   return (
@@ -48,8 +51,8 @@ const CalendarDatePicker = ({ filters, setFilters }: FilterBarProps) => {
           size="sm"
           className={cn(
             "border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 dark:hover:bg-input/50 h-9 min-w-0 appearance-none rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed",
-          "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-          "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
+            "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+            "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive"
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />

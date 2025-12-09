@@ -44,6 +44,14 @@ export interface TransactionsApiResponse {
   sort: SortResponse;
 }
 
+export interface LightTransactionsApiResponse {
+  success: true;
+  data: TransactionResponse[];
+  pagination: PaginationResponse;
+  sort: SortResponse;
+}
+
+
 export interface ApiErrorResponse {
   success: false;
   error: string;

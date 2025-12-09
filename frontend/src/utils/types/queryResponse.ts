@@ -1,3 +1,11 @@
+export interface KpiMetrics {
+  totalUnitsSold?: number;
+  totalAmount?: number;
+  totalDiscount?: number;
+  salesRecords?: number;
+  discountRecords?: number;
+}
+
 export interface TransactionResponse {
   transactionId: string;
   date: string;
@@ -36,6 +44,7 @@ export interface SortResponse {
 export interface TransactionsApiResponse {
   success: true;
   data: TransactionResponse[];
+  metrics: KpiMetrics;
   pagination: PaginationResponse;
   sort: SortResponse;
 }

@@ -1,14 +1,14 @@
 "use client"
 import React from 'react'
-import { FilterBarProps } from '../FilterBar'
+import { FilterInterface, PaginationInterface } from '@/app/page';
 import {
-    Popover, PopoverContent, PopoverTrigger,
+  Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { X } from "lucide-react"
+import { X, ChevronDown } from "lucide-react"
 
 const allTags = [
   "makeup", "fragrance-free", "formal", "organic", "gadgets",
@@ -18,27 +18,35 @@ const allTags = [
 
 type Tag = typeof allTags[number]
 
-const Tags = ({ filters, setFilters }: FilterBarProps) => {
-  const selectedTags = filters.tags ? filters.tags.split(',') as Tag[] : []
-  
+interface TagsProps {
+  filters: FilterInterface & PaginationInterface;
+  setFilters: (updates: Partial<FilterInterface & PaginationInterface>) => void;
+}
+
+const Tags = ({ filters, setFilters }: TagsProps) => {
+  const selectedTags: Tag[] = filters.tags?.filter((tag): tag is Tag => 
+    allTags.includes(tag as Tag)
+  ) || [];
+
   const toggleTag = (tag: Tag) => {
     const newTags = selectedTags.includes(tag)
       ? selectedTags.filter(t => t !== tag)
-      : [...selectedTags, tag]
+      : [...selectedTags, tag];
     
-    const tagsString = newTags.length > 0 ? newTags.join(',') : undefined
-    
-    setFilters(prev => ({ ...prev, tags: tagsString, page: '1' }))
+    setFilters({ 
+      tags: newTags.length > 0 ? newTags : undefined, 
+      page: '1' 
+    })
   }
 
   const clearAll = () => {
-    setFilters(prev => ({ ...prev, tags: undefined, page: '1' }))
+    setFilters({ tags: undefined, page: '1' })
   }
 
   return (
     <Popover>
-      <PopoverTrigger className='border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 dark:hover:bg-input/50 h-9 min-w-0 appearance-none rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive'>
-        Tags ({selectedTags.length})
+      <PopoverTrigger className='border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 dark:hover:bg-input/50 h-9 min-w-0 appearance-none rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive flex items-center justify-between'>
+        Tags ({selectedTags.length}) <ChevronDown className="size-3" />
       </PopoverTrigger>
       <PopoverContent className="w-80 p-4">
         <div className="flex justify-between items-center mb-4">
@@ -54,7 +62,7 @@ const Tags = ({ filters, setFilters }: FilterBarProps) => {
             </Button>
           )}
         </div>
-        
+
         <ScrollArea className="h-64 pr-2">
           <div className="grid grid-cols-2 gap-2">
             {allTags.map((tag) => (
@@ -79,14 +87,14 @@ const Tags = ({ filters, setFilters }: FilterBarProps) => {
             ))}
           </div>
         </ScrollArea>
-        
+
         {selectedTags.length > 0 && (
           <div className="mt-4 pt-4 border-t flex flex-wrap gap-1">
             {selectedTags.map((tag) => (
               <Badge key={tag} variant="secondary" className="text-xs px-2 py-0.5">
                 {tag}
-                <X 
-                  className="h-3 w-3 ml-1 cursor-pointer hover:text-destructive" 
+                <X
+                  className="h-3 w-3 ml-1 cursor-pointer hover:text-destructive"
                   onClick={(e) => {
                     e.stopPropagation()
                     toggleTag(tag)

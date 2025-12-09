@@ -1,64 +1,47 @@
-import React, { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Input } from "@/components/ui/input"
-import { FilterInterface } from '@/app/page';
+import { FilterInterface, PaginationInterface } from '@/app/page';
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
 interface SearchBarProps {
-  filters: FilterInterface;
-  setFilters: React.Dispatch<React.SetStateAction<FilterInterface>>;
+  filters: FilterInterface & PaginationInterface;
+  setFilters: (updates: Partial<FilterInterface & PaginationInterface>) => void;
 }
 
 const Search = ({ filters, setFilters }: SearchBarProps) => {
-  const [searchValue, setSearchValue] = useState(
-    filters.customerNamePrefix || filters.phonePrefix || ''
-  )
+  const [searchValue, setSearchValue] = useState('')
+
+  useEffect(() => {
+    if (filters.customerNamePrefix) setSearchValue(filters.customerNamePrefix)
+    else if (filters.phonePrefix) setSearchValue(filters.phonePrefix)
+    else setSearchValue('')
+  }, [filters.customerNamePrefix, filters.phonePrefix])
+
+  const clearSearch = useCallback(() => {
+    setSearchValue('')
+    setFilters({ customerNamePrefix: undefined, phonePrefix: undefined, page: '1' })
+  }, [setFilters])
 
   const handleSearch = useCallback((value: string) => {
+    setSearchValue(value)
     const trimmed = value.trim()
 
     if (!trimmed) {
-      setFilters(prev => ({
-        ...prev,
-        customerNamePrefix: undefined,
-        phonePrefix: undefined,
-        page: '1'
-      }))
+      setFilters({ customerNamePrefix: undefined, phonePrefix: undefined, page: '1' })
     } else if (/^\d+$/.test(trimmed)) {
-      setFilters(prev => ({
-        ...prev,
-        phonePrefix: trimmed.slice(0, 4),
-        customerNamePrefix: undefined,
-        page: '1'
-      }))
+      setFilters({ phonePrefix: trimmed.slice(0, 4), customerNamePrefix: undefined, page: '1' })
     } else {
-      setFilters(prev => ({
-        ...prev,
-        customerNamePrefix: trimmed.slice(0, 4),
-        phonePrefix: undefined,
-        page: '1'
-      }))
+      setFilters({ customerNamePrefix: trimmed.slice(0, 4), phonePrefix: undefined, page: '1' })
     }
-    setSearchValue(value)
   }, [setFilters])
-
-
-  const clearSearch = () => {
-    setSearchValue('')
-    setFilters(prev => ({
-      ...prev,
-      customerNamePrefix: undefined,
-      phonePrefix: undefined,
-      page: '1'
-    }))
-  }
 
   return (
     <div>
       <div className='w-full h-12 flex justify-between items-center px-3 text-accent-foreground border-b-2'>
-        
         <div className='text-base font-sans font-medium flex justify-center items-center'>
-          <SidebarTrigger/>
-          Sales Management System</div>
+          <SidebarTrigger />
+          Sales Management System
+        </div>
         <div className='relative max-w-96'>
           <Input
             id="search"

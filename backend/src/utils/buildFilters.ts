@@ -18,10 +18,13 @@ export function buildWhereClause(query: any): Prisma.TransactionWhereInput {
     }
 
     if (paymentMethod) {
-        where.paymentMethod = {
-            equals: paymentMethod,
-            mode: "insensitive"
-        };
+        const paymentMethods = Array.isArray(paymentMethod) ? paymentMethod : [paymentMethod];
+        if (paymentMethods.length > 0) {
+            where.paymentMethod = {
+                in: paymentMethods,
+                mode: "insensitive"
+            };
+        }
     }
 
     const hasCustomerFilters =
@@ -31,8 +34,19 @@ export function buildWhereClause(query: any): Prisma.TransactionWhereInput {
     if (hasCustomerFilters) {
         where.customer = {};
 
-        if (gender) where.customer.gender = gender;
-        if (customerRegion) where.customer.customerRegion = customerRegion;
+        if (gender) {
+            const genders = Array.isArray(gender) ? gender : [gender];
+            if (genders.length > 0) {
+                where.customer.gender = { in: genders };
+            }
+        }
+
+        if (customerRegion) {
+            const regions = Array.isArray(customerRegion) ? customerRegion : [customerRegion];
+            if (regions.length > 0) {
+                where.customer.customerRegion = { in: regions };
+            }
+        }
 
         if (minAge || maxAge) {
             where.customer.age = {};
@@ -46,7 +60,6 @@ export function buildWhereClause(query: any): Prisma.TransactionWhereInput {
                 mode: "insensitive"
             };
         }
-
         if (phonePrefix) {
             where.customer.phoneNumber = {
                 startsWith: phonePrefix,
@@ -56,15 +69,17 @@ export function buildWhereClause(query: any): Prisma.TransactionWhereInput {
     }
 
     const hasProductFilters = productCategory || tags;
-
     if (hasProductFilters) {
         where.product = {};
 
         if (productCategory) {
-            where.product.productCategory = {
-                equals: productCategory,
-                mode: "insensitive"
-            };
+            const categories = Array.isArray(productCategory) ? productCategory : [productCategory];
+            if (categories.length > 0) {
+                where.product.productCategory = {
+                    in: categories,
+                    mode: "insensitive"
+                };
+            }
         }
 
         if (tags) {

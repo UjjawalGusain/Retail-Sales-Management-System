@@ -1,18 +1,8 @@
 import { FilterInterface } from "@/app/page";
-export const buildQueryString = (filters: Partial<FilterInterface>): string => {
-  const cleanFilters = Object.fromEntries(
-    Object.entries(filters).filter(([_, value]) => 
-      value !== undefined && 
-      value !== null && 
-      value !== ''
-    )
-  ) as Record<string, string>;
 
-  return new URLSearchParams(cleanFilters).toString();
-};
-
-export const buildKPIQueryString = (
-  filters: Partial<FilterInterface>
+export const buildQueryString = (
+  // filters: Partial<FilterInterface>
+  filters: any
 ): string => {
   const {
     page,
@@ -22,13 +12,28 @@ export const buildKPIQueryString = (
     ...onlyFilters
   } = filters;
 
-  const cleanFilters = Object.fromEntries(
-    Object.entries(onlyFilters).filter(([_, value]) =>
-      value !== undefined &&
-      value !== null &&
-      value !== ""
-    )
-  ) as Record<string, string>;
+  const params = new URLSearchParams();
 
-  return new URLSearchParams(cleanFilters).toString();
+  Object.entries(onlyFilters).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+
+    if (typeof value === 'string') {
+      params.append(key, value);
+    }
+    else if (Array.isArray(value)) {
+      value.forEach((val) => {
+        if (val && typeof val === 'string') {
+          params.append(key, val);
+        }
+      });
+    }
+  });
+
+  if (page) params.append('page', page.toString());
+  if (limit) params.append('limit', limit.toString());
+  if (orderBy) params.append('orderBy', orderBy);
+  if (orderByType) params.append('orderByType', orderByType);
+
+  return params.toString();
 };
+

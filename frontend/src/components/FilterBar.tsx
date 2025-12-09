@@ -1,20 +1,35 @@
-import React from 'react'
-import useSWR from 'swr'
 import {
     NativeSelect,
     NativeSelectOption,
 } from "@/components/ui/native-select"
 import { IoReload } from "react-icons/io5";
 import { CiCircleInfo } from "react-icons/ci";
-import { FilterInterface } from '@/app/page';
+import { FilterInterface, PaginationInterface } from '@/app/page';
 import AgeRange from './FilterBar/AgeRange';
 import Calendar from './FilterBar/Calendar';
 import Tags from './FilterBar/Tags';
-import {buildKPIQueryString} from "./../utils/buildQueryString"
+import { Checkbox } from './ui/checkbox';
+import { Label } from "@/components/ui/label"
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from 'lucide-react';
+
+interface KpiMetrics {
+    totalUnitsSold?: number;
+    totalAmount?: number;
+    totalDiscount?: number;
+    salesRecords?: number;
+    discountRecords?: number;
+}
 
 export interface FilterBarProps {
-    filters: FilterInterface;
-    setFilters: React.Dispatch<React.SetStateAction<FilterInterface>>;
+    filters: FilterInterface & PaginationInterface;
+    setFilters: (updates: Partial<FilterInterface & PaginationInterface>) => void;
+    kpis?: KpiMetrics | null;
+    onResetKpis?: () => void;
 }
 
 const nativeSelectConfig = {
@@ -61,56 +76,89 @@ const nativeSelectConfig = {
     },
 } as const;
 
-const BASE_API_URL = "https://retail-sales-management-system-back.vercel.app";
+type ArrayFilterKeys = 'customerRegion' | 'gender' | 'productCategory' | 'paymentMethod';
 
-const fetcher = (url: string) =>
-    fetch(url).then((r) => {
-        if (!r.ok) throw new Error("Failed to fetch");
-        return r.json();
-    });
+const FilterBar = ({ filters, setFilters, kpis, onResetKpis }: FilterBarProps) => {
 
-const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
-    const qs = buildKPIQueryString(filters);
+    const resetAllFilters = () => {
+        onResetKpis?.();
+        setFilters({
+            page: '1',
+            limit: '10',
+            customerRegion: undefined,
+            gender: undefined,
+            productCategory: undefined,
+            paymentMethod: undefined,
+            tags: undefined,
+            customerNamePrefix: undefined,
+            phonePrefix: undefined,
+            minAge: undefined,
+            maxAge: undefined,
+            startDate: undefined,
+            endDate: undefined,
+            orderBy: 'customerName',
+            orderByType: 'asc',
+            forceHeavy: true,
+        });
 
-    const { data: unitsData } = useSWR(
-        `${BASE_API_URL}/api/query/totalUnits?${qs}`,
-        fetcher
-    );
-
-    const { data: amountData } = useSWR(
-        `${BASE_API_URL}/api/query/totalAmount?${qs}`,
-        fetcher
-    );
-
-    const { data: discountData } = useSWR(
-        `${BASE_API_URL}/api/query/totalDiscount?${qs}`,
-        fetcher
-    );
-
-    const updateFilter = (field: keyof FilterInterface, value: string) => {
-        setFilters(prev => ({
-            ...prev,
-            [field]: value || undefined,
-            page: '1'
-        }));
     };
 
-    const renderSelect = (field: keyof typeof nativeSelectConfig, key: keyof FilterInterface) => {
+
+    const renderSelect = (
+        field: keyof typeof nativeSelectConfig,
+        key: ArrayFilterKeys
+    ) => {
         const config = nativeSelectConfig[field];
-        const currentValue = filters[key] || '';
+        const currentValues = (filters[key] as string[]) || [];
+
+        const toggleValue = (value: string) => {
+            console.log("toggleValue called with:", value);
+            console.log("currentValues:", currentValues);
+
+            const newValues = currentValues.includes(value)
+                ? currentValues.filter(v => v !== value)
+                : [...currentValues, value];
+
+            console.log("newValues:", newValues);
+
+            const updates = {
+                [key]: newValues.length ? newValues : undefined,
+                page: "1"
+            };
+
+            console.log("sending to setFilters:", updates);
+            setFilters(updates);
+            console.log("setFilters called");
+        };
+
 
         return (
-            <NativeSelect
-                key={field}
-                value={currentValue}
-                onChange={(e) => updateFilter(key, e.target.value)}
-            >
-                {config.options.map((option) => (
-                    <NativeSelectOption key={option.value} value={option.value}>
-                        {option.label}
-                    </NativeSelectOption>
-                ))}
-            </NativeSelect>
+            <DropdownMenu>
+                <DropdownMenuTrigger className="border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 dark:hover:bg-input/50 h-9 min-w-0 appearance-none rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed flex items-center justify-between gap-2">
+                    {config.label || field} <ChevronDown className="size-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-52 max-h-48 overflow-y-auto p-2">
+                    <div className="flex flex-col gap-2">
+                        {config.options.map(option =>
+                            option.value ? (
+                                <div key={option.value} className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id={`${field}-${option.value}`}
+                                        checked={currentValues.includes(option.value)}
+                                        onCheckedChange={() => toggleValue(option.value)}
+                                    />
+                                    <Label
+                                        htmlFor={`${field}-${option.value}`}
+                                        className="cursor-pointer text-sm hover:text-accent-foreground"
+                                    >
+                                        {option.label}
+                                    </Label>
+                                </div>
+                            ) : null
+                        )}
+                    </div>
+                </DropdownMenuContent>
+            </DropdownMenu>
         );
     };
 
@@ -119,8 +167,9 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
             <div className='py-4 flex justify-between items-center'>
                 <div className='flex gap-3 items-center'>
                     <button
-                        className='p-3 bg-muted rounded-sm hover:bg-muted-foreground transition-colors'
-                        onClick={() => setFilters({ page: '1' })}
+                        type="button"
+                        className="p-3 bg-muted rounded-sm hover:bg-muted-foreground transition-colors"
+                        onClick={resetAllFilters}
                     >
                         <IoReload />
                     </button>
@@ -141,12 +190,10 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
                     value={`${filters.orderBy || 'customerName'}-${filters.orderByType || 'asc'}`}
                     onChange={(e) => {
                         const [orderBy, orderByType] = e.target.value.split('-');
-                        setFilters(prev => ({
-                            ...prev,
+                        setFilters({
                             orderBy: orderBy as any,
-                            orderByType: orderByType as any,
-                            page: '1'
-                        }));
+                            orderByType: orderByType as any
+                        });
                     }}
                 >
                     <NativeSelectOption value="customerName-asc">Customer Name (A-Z)</NativeSelectOption>
@@ -162,7 +209,7 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
                         Total units sold <CiCircleInfo />
                     </div>
                     <div className='text-base font-semibold'>
-                        {unitsData?.totalUnitsSold ?? '—'}
+                        {kpis?.totalUnitsSold ?? '—'}
                     </div>
                 </div>
 
@@ -171,7 +218,7 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
                         Total amount <CiCircleInfo />
                     </div>
                     <div className='text-base font-semibold'>
-                        ₹{Number(amountData?.totalAmount || 0).toLocaleString()} ({amountData?.salesRecords || 0} SRs)
+                        ₹{Number(kpis?.totalAmount || 0).toLocaleString()} ({kpis?.salesRecords || 0} SRs)
                     </div>
                 </div>
 
@@ -180,7 +227,7 @@ const FilterBar = ({ filters, setFilters }: FilterBarProps) => {
                         Total Discount <CiCircleInfo />
                     </div>
                     <div className='text-base font-semibold'>
-                        ₹{Number(discountData?.totalDiscount || 0).toLocaleString()} ({discountData?.discountRecords || 0} SRs)
+                        ₹{Number(kpis?.totalDiscount || 0).toLocaleString()} ({kpis?.salesRecords || 0} SRs)
                     </div>
                 </div>
             </div>

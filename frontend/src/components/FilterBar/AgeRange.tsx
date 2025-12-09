@@ -6,10 +6,15 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { FilterBarProps } from '../FilterBar';
+import { FilterInterface, PaginationInterface } from '@/app/page';
+import { ChevronDown } from 'lucide-react';
 
+interface AgeRangeProps {
+    filters: FilterInterface & PaginationInterface;
+    setFilters: (updates: Partial<FilterInterface & PaginationInterface>) => void;
+}
 
-const AgeRange = ({ filters, setFilters }: FilterBarProps) => {
+const AgeRange = ({ filters, setFilters }: AgeRangeProps) => {
     return (
         <Popover>
             <PopoverTrigger asChild>
@@ -17,10 +22,10 @@ const AgeRange = ({ filters, setFilters }: FilterBarProps) => {
                     variant="outline"
                     size="sm"
                     className={`border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 dark:hover:bg-input/50 h-9 min-w-0 appearance-none rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed",
-          "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-          "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive`}
+    "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+    "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive`}
                 >
-                    Age Range: {filters.minAge || '0'} - {filters.maxAge || '∞'}
+                    Age Range: {filters.minAge || '0'} - {filters.maxAge || '∞'} <ChevronDown className="size-3"/>
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[220px] p-4">
@@ -33,11 +38,10 @@ const AgeRange = ({ filters, setFilters }: FilterBarProps) => {
                         min="0"
                         max="120"
                         value={filters.minAge || ''}
-                        onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            minAge: e.target.value || undefined,
-                            page: '1'
-                        }))}
+                        onChange={(e) => setFilters({ 
+                            minAge: e.target.value || undefined, 
+                            page: '1' 
+                        })}
                         className="h-9"
                         placeholder="0"
                     />
@@ -50,11 +54,10 @@ const AgeRange = ({ filters, setFilters }: FilterBarProps) => {
                         min="0"
                         max="120"
                         value={filters.maxAge || ''}
-                        onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            maxAge: e.target.value || undefined,
-                            page: '1'
-                        }))}
+                        onChange={(e) => setFilters({ 
+                            maxAge: e.target.value || undefined, 
+                            page: '1' 
+                        })}
                         className="h-9"
                         placeholder="∞"
                     />
@@ -63,12 +66,11 @@ const AgeRange = ({ filters, setFilters }: FilterBarProps) => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setFilters(prev => ({
-                                ...prev,
-                                minAge: undefined,
-                                maxAge: undefined,
-                                page: '1'
-                            }))}
+                            onClick={() => setFilters({ 
+                                minAge: undefined, 
+                                maxAge: undefined, 
+                                page: '1' 
+                            })}
                             className="h-8 px-3 text-xs"
                         >
                             Clear
