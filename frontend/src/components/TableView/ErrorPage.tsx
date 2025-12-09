@@ -8,7 +8,7 @@ interface ErrorPageProps {
   onClear: () => void
 }
 
-export default function ErrorPage({ message, type = 'error', onClear }: ErrorPageProps) {
+export default function ErrorPage({ message, type = 'error' }: ErrorPageProps) {
   const isError = type === 'error'
 
   return (
@@ -28,16 +28,6 @@ export default function ErrorPage({ message, type = 'error', onClear }: ErrorPag
       <p className="text-lg mb-8 max-w-md mx-auto">
         {message}
       </p>
-
-      <div className="space-x-3">
-        <Button 
-          size="lg" 
-          className="bg-accent-foreground hover:bg-transparent hover:text-accent-foreground border-accent-foreground text-accent"
-          onClick={onClear}
-        >
-          Clear Filters
-        </Button>
-      </div>
     </div>
   )
 }
