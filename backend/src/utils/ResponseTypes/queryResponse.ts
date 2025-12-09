@@ -37,12 +37,6 @@ export interface SortResponse {
   orderByType: 'asc' | 'desc';
 }
 
-export interface TransactionsApiResponse {
-  success: true;
-  data: TransactionResponse[];
-  pagination: PaginationResponse;
-  sort: SortResponse;
-}
 
 export interface LightTransactionsApiResponse {
   success: true;

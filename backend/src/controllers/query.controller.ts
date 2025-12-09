@@ -2,163 +2,13 @@ import { Request, Response } from "express";
 import { Prisma } from "./../../prisma/generated/client/client.js";
 import prisma from "./../services/prismaClient.js";
 import type {
-    TransactionsApiResponse,
     LightTransactionsApiResponse,
     ApiErrorResponse,
-    TransactionResponse
 } from "./../utils/ResponseTypes/queryResponse";
 import type { TransactionsQueryParams } from "./../utils/RequestTypes/queryRequest";
 import { buildWhereClause } from "./../utils/buildFilters.js";
 
 class QueryController {
-    async queryTransactions(
-        req: Request<{}, any, any, TransactionsQueryParams>,
-        res: Response<TransactionsApiResponse | ApiErrorResponse>
-    ): Promise<void> {
-        const page = parseInt(req.query.page || '1') || 1;
-        const limit = Math.min(parseInt(req.query.limit || '10'), 100);
-
-        const { orderBy: orderByParam = 'customerName', orderByType = 'asc' } = req.query;
-
-        try {
-            const skip = (page - 1) * limit;
-            const where = buildWhereClause(req.query);
-
-            type SortableField = 'customerName' | 'totalAmount' | 'date' | 'quantity';
-            const validSortFields: SortableField[] = ['customerName', 'totalAmount', 'date', 'quantity'];
-            const validDirections = ['asc', 'desc'];
-
-            const safeOrderBy: SortableField = validSortFields.includes(orderByParam as SortableField)
-                ? (orderByParam as SortableField)
-                : 'customerName';
-            const safeDirection = validDirections.includes(orderByType as string)
-                ? (orderByType as 'asc' | 'desc')
-                : 'asc';
-
-            const orderByMap: Record<SortableField, Prisma.TransactionOrderByWithRelationInput> = {
-                customerName: { customer: { customerName: safeDirection } },
-                totalAmount: { totalAmount: safeDirection },
-                date: { date: safeDirection },
-                quantity: { quantity: safeDirection }
-            };
-            const orderBy = orderByMap[safeOrderBy];
-
-            const [rawData, totalRaw] = await prisma.$transaction([
-                prisma.transaction.findMany({
-                    select: {
-                        transactionId: true,
-                        date: true,
-                        customerId: true,
-                        productId: true,
-                        quantity: true,
-                        totalAmount: true,
-                        employeeName: true,
-                        customer: {
-                            select: {
-                                customerName: true,
-                                phoneNumber: true,
-                                gender: true,
-                                age: true,
-                                customerRegion: true
-                            }
-                        },
-                        product: { select: { productCategory: true } }
-                    },
-                    where,
-                    orderBy,
-                    skip,
-                    take: limit
-                }),
-                prisma.transaction.count({ where })
-            ]);
-
-            const data: TransactionResponse[] = rawData.map((transaction: any) => ({
-                ...transaction,
-                transactionId: transaction.transactionId.toString()
-            }));
-
-            res.json({
-                success: true,
-                data,
-                pagination: {
-                    page,
-                    limit,
-                    total: Number(totalRaw),
-                    totalPages: Math.ceil(Number(totalRaw) / limit),
-                    hasNext: skip + limit < Number(totalRaw),
-                    hasPrev: page > 1,
-                    filters: req.query as Record<string, string | string[] | undefined>
-                },
-                sort: { orderBy: safeOrderBy, orderByType: safeDirection }
-            });
-
-        } catch (error) {
-            console.error('Transaction query error:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to fetch transactions',
-                details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
-            });
-        }
-    }
-
-    async getTotalUnitsSold(req: Request, res: Response) {
-        try {
-            const where = buildWhereClause(req.query);
-
-            const result = await prisma.$transaction(async (tx) => {
-                return tx.transaction.aggregate({ where, _sum: { quantity: true } });
-            });
-
-            res.json({
-                success: true,
-                totalUnitsSold: Number(result._sum.quantity || 0)
-            });
-        } catch (error) {
-            console.error("Total units sold error:", error);
-            res.status(500).json({ success: false, error: "Failed to fetch total units sold" });
-        }
-    }
-
-    async getTotalAmount(req: Request, res: Response) {
-        try {
-            const where = buildWhereClause(req.query);
-
-            const result = await prisma.$transaction(async (tx) => {
-                return tx.transaction.aggregate({ where, _sum: { totalAmount: true }, _count: true });
-            });
-
-            res.json({
-                success: true,
-                totalAmount: Number(result._sum.totalAmount || 0),
-                salesRecords: result._count
-            });
-        } catch (error) {
-            console.error("Total amount error:", error);
-            res.status(500).json({ success: false, error: "Failed to fetch total amount" });
-        }
-    }
-
-    async getTotalDiscount(req: Request, res: Response) {
-        try {
-            const where = buildWhereClause(req.query);
-
-            const result = await prisma.$transaction(async (tx) => {
-                return tx.transaction.aggregate({
-                    where,
-                    _sum: { totalAmount: true, finalAmount: true },
-                    _count: true
-                });
-            });
-
-            const totalDiscount = Number(result._sum.totalAmount || 0) - Number(result._sum.finalAmount || 0);
-
-            res.json({ success: true, totalDiscount, discountRecords: result._count });
-        } catch (error) {
-            console.error("Total discount error:", error);
-            res.status(500).json({ success: false, error: "Failed to fetch total discount" });
-        }
-    }
 
     async getTransactionsLight(
         req: Request<{}, any, any, TransactionsQueryParams>,
@@ -244,109 +94,107 @@ class QueryController {
     }
 
     async getTransactionsHeavy(
-    req: Request<{}, any, any, TransactionsQueryParams>,
-    res: Response
-): Promise<void> {
-    try {
-        const page = parseInt(req.query.page || '1') || 1;
-        const limit = Math.min(parseInt(req.query.limit || '10'), 100);
-        const skip = (page - 1) * limit;
+        req: Request<{}, any, any, TransactionsQueryParams>,
+        res: Response
+    ): Promise<void> {
+        try {
+            const page = parseInt(req.query.page || '1') || 1;
+            const limit = Math.min(parseInt(req.query.limit || '10'), 100);
+            const skip = (page - 1) * limit;
 
-        const where = buildWhereClause(req.query);
+            const where = buildWhereClause(req.query);
 
-        const { orderBy: orderByParam = 'customerName', orderByType = 'asc' } = req.query;
+            const { orderBy: orderByParam = 'customerName', orderByType = 'asc' } = req.query;
 
-        const validSortFields = ['customerName', 'totalAmount', 'date', 'quantity'] as const;
-        const validDirections = ['asc', 'desc'] as const;
+            const validSortFields = ['customerName', 'totalAmount', 'date', 'quantity'] as const;
+            const validDirections = ['asc', 'desc'] as const;
 
-        const safeOrderBy = validSortFields.includes(orderByParam as any)
-            ? (orderByParam as any)
-            : 'customerName';
+            const safeOrderBy = validSortFields.includes(orderByParam as any)
+                ? (orderByParam as any)
+                : 'customerName';
 
-        const safeDirection = validDirections.includes(orderByType as any)
-            ? (orderByType as any)
-            : 'asc';
+            const safeDirection = validDirections.includes(orderByType as any)
+                ? (orderByType as any)
+                : 'asc';
 
-        const orderBy: Prisma.TransactionOrderByWithRelationInput =
-            safeOrderBy === 'customerName'
-                ? { customer: { customerName: safeDirection } }
-                : { [safeOrderBy]: safeDirection };
+            const orderBy: Prisma.TransactionOrderByWithRelationInput =
+                safeOrderBy === 'customerName'
+                    ? { customer: { customerName: safeDirection } }
+                    : { [safeOrderBy]: safeDirection };
 
-        const [rawData, counts, totalRaw] = await prisma.$transaction([
-            prisma.transaction.findMany({
-                select: {
-                    transactionId: true,
-                    date: true,
-                    customerId: true,
-                    productId: true,
-                    quantity: true,
-                    totalAmount: true,
-                    finalAmount: true,
-                    employeeName: true,
-                    customer: {
-                        select: {
-                            customerName: true,
-                            phoneNumber: true,
-                            gender: true,
-                            age: true,
-                            customerRegion: true
-                        }
+            const [rawData, counts, totalRaw] = await prisma.$transaction([
+                prisma.transaction.findMany({
+                    select: {
+                        transactionId: true,
+                        date: true,
+                        customerId: true,
+                        productId: true,
+                        quantity: true,
+                        totalAmount: true,
+                        finalAmount: true,
+                        employeeName: true,
+                        customer: {
+                            select: {
+                                customerName: true,
+                                phoneNumber: true,
+                                gender: true,
+                                age: true,
+                                customerRegion: true
+                            }
+                        },
+                        product: { select: { productCategory: true } }
                     },
-                    product: { select: { productCategory: true } }
+                    where,
+                    orderBy,
+                    skip,
+                    take: limit
+                }),
+                prisma.transaction.aggregate({
+                    where,
+                    _sum: { quantity: true, totalAmount: true, finalAmount: true },
+                    _count: true
+                }),
+                prisma.transaction.count({ where })
+            ]);
+
+            const data = rawData.map(t => ({
+                ...t,
+                transactionId: t.transactionId.toString()
+            }));
+
+            const totalUnitsSold = Number(counts._sum.quantity || 0);
+            const totalAmount = Number(counts._sum.totalAmount || 0);
+            const totalDiscount = totalAmount - Number(counts._sum.finalAmount || 0);
+
+            res.json({
+                success: true,
+                data,
+                pagination: {
+                    page,
+                    limit,
+                    total: Number(totalRaw),
+                    totalPages: Math.ceil(Number(totalRaw) / limit),
+                    hasNext: skip + limit < Number(totalRaw),
+                    hasPrev: page > 1,
+                    filters: req.query as Record<string, string | string[] | undefined>
                 },
-                where,
-                orderBy,
-                skip,
-                take: limit
-            }),
-            prisma.transaction.aggregate({
-                where,
-                _sum: { quantity: true, totalAmount: true, finalAmount: true },
-                _count: true
-            }),
-            prisma.transaction.count({ where })
-        ]);
+                sort: { orderBy: safeOrderBy, orderByType: safeDirection },
+                metrics: {
+                    totalUnitsSold,
+                    totalAmount,
+                    totalDiscount,
+                    salesRecords: counts._count
+                }
+            });
 
-        const data = rawData.map(t => ({
-            ...t,
-            transactionId: t.transactionId.toString()
-        }));
-
-        const totalUnitsSold = Number(counts._sum.quantity || 0);
-        const totalAmount = Number(counts._sum.totalAmount || 0);
-        const totalDiscount = totalAmount - Number(counts._sum.finalAmount || 0);
-
-        res.json({
-            success: true,
-            data,
-            pagination: {
-                page,
-                limit,
-                total: Number(totalRaw),
-                totalPages: Math.ceil(Number(totalRaw) / limit),
-                hasNext: skip + limit < Number(totalRaw),
-                hasPrev: page > 1,
-                filters: req.query as Record<string, string | string[] | undefined>
-            },
-            sort: { orderBy: safeOrderBy, orderByType: safeDirection },
-            metrics: {
-                totalUnitsSold,
-                totalAmount,
-                totalDiscount,
-                salesRecords: counts._count
-            }
-        });
-
-    } catch (error) {
-        console.error("Heavy Transaction Query Error:", error);
-        res.status(500).json({ 
-            success: false, 
-            error: "Failed to fetch data" 
-        });
+        } catch (error) {
+            console.error("Heavy Transaction Query Error:", error);
+            res.status(500).json({
+                success: false,
+                error: "Failed to fetch data"
+            });
+        }
     }
-}
-
-
 
 }
 
